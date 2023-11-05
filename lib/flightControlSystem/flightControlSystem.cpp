@@ -18,8 +18,8 @@
 #include "flightControlSystem.h"
 
 /* Exported block signals */
-CommandBus cmd_inport;                 /* '<Root>/AC cmd' */
-SensorsBus sensor_inport;              /* '<Root>/Sensors' */
+// CommandBus cmd_inport;                 /* '<Root>/AC cmd' */
+// SensorsBus sensor_inport;              /* '<Root>/Sensors' */
 real32_T motors_outport[4];            /* '<S1>/controller' */
 uint8_T flag_outport;                  /* '<S2>/Merge' */
 

@@ -3,15 +3,16 @@
 #include <Sensors.h>
 #include <Environment.h>
 #include <linearAirframe.h>
-
+#include <flightControlSystem.h>
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(300);
+  Serial.begin(1200);
   Signal_initialize();
   Sensors_initialize();
   Environment_initialize();
   linearAirframe_initialize();
+  flightControlSystem_initialize();
 }
 
 void loop() {
@@ -20,5 +21,6 @@ void loop() {
   Sensors_step();
   Environment_step();
   linearAirframe_step();
-  Serial.println(rtDW.TmpSignalConversionAtLinearMode[0]);
+  flightControlSystem_step();
+  Serial.println(motors_outport[0]);
 }
