@@ -2,6 +2,8 @@
 #include <Signals.h>
 #include <Sensors.h>
 #include <Environment.h>
+#include <linearAirframe.h>
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -9,6 +11,7 @@ void setup() {
   Signal_initialize();
   Sensors_initialize();
   Environment_initialize();
+  linearAirframe_initialize();
 }
 
 void loop() {
@@ -16,5 +19,6 @@ void loop() {
   Signal_step();
   Sensors_step();
   Environment_step();
-  Serial.println(Environment_Y.Environmentb.AtmosphereBus.pressure);
+  linearAirframe_step();
+  Serial.println(rtDW.TmpSignalConversionAtLinearMode[0]);
 }
