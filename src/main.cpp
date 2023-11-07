@@ -2,6 +2,8 @@
 #include <Signals.h>
 #include <Sensors.h>
 #include <Environment.h>
+#include <linearAirframe.h>
+#include <flightControlSystem.h>
 
 void setup() {
   // put your setup code here, to run once:
@@ -9,6 +11,8 @@ void setup() {
   Signal_initialize();
   Sensors_initialize();
   Environment_initialize();
+  linearAirframe_initialize();
+  flightControlSystem_initialize();
 }
 
 void loop() {
@@ -16,5 +20,7 @@ void loop() {
   Signal_step();
   Sensors_step();
   Environment_step();
-  Serial.println(sensor_inport.HALSensors.HAL_acc_SI.x);
+  linearAirframe_step();
+  flightControlSystem_step();
+  Serial.println(motors_outport[0]);
 }
