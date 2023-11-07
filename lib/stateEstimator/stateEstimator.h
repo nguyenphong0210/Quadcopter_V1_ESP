@@ -23,7 +23,7 @@
 # define stateEstimator_COMMON_INCLUDES_
 #include "rtwtypes.h"
 #endif                                 /* stateEstimator_COMMON_INCLUDES_ */
-
+#include<Arduino.h>
 #include "rtGetInf.h"
 #include "rt_nonfinite.h"
 #ifndef DEFINED_TYPEDEF_FOR_sensordata_t_

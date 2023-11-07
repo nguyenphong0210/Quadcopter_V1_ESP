@@ -11,8 +11,8 @@ void setup() {
   Signal_initialize();
   Sensors_initialize();
   Environment_initialize();
-  linearAirframe_initialize();
   flightControlSystem_initialize();
+  linearAirframe_initialize();
 }
 
 void loop() {
@@ -20,14 +20,13 @@ void loop() {
   Signal_step();
   Sensors_step();
   Environment_step();
-  linearAirframe_step();
   flightControlSystem_step();
-  Serial.print(motors_outport[0]);
-  Serial.print("  ");
-  Serial.print(motors_outport[1]);
-  Serial.print("  ");
-  Serial.print(motors_outport[2]);
-  Serial.print("  ");
-  Serial.println(motors_outport[3]);
-
+  linearAirframe_step();
+  // Serial.print(motors_outport[0]);
+  // Serial.print("  ");
+  // Serial.print(motors_outport[1]);
+  // Serial.print("  ");
+  // Serial.print(motors_outport[2]);
+  // Serial.print("  ");
+  // Serial.println(motors_outport[3]);
 }

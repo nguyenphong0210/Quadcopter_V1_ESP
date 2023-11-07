@@ -1233,6 +1233,8 @@ void stateEstimator_run(const boolean_T arg_controlModePosVSOrient_flagin, const
   arg_states_estimout->q = inverseIMU_gain[4];
   arg_states_estimout->r = rtb_r;
 
+  Serial.println(arg_states_estimout->pitch);
+
   /* Update for Memory: '<S2>/Memory' incorporates:
    *  SignalConversion generated from: '<S16>/sincos'
    */
