@@ -7,7 +7,7 @@
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(1200);
+  Serial.begin(4800);
   Signal_initialize();
   Sensors_initialize();
   Environment_initialize();
@@ -22,5 +22,12 @@ void loop() {
   Environment_step();
   linearAirframe_step();
   flightControlSystem_step();
-  Serial.println(motors_outport[0]);
+  Serial.print(motors_outport[0]);
+  Serial.print("  ");
+  Serial.print(motors_outport[1]);
+  Serial.print("  ");
+  Serial.print(motors_outport[2]);
+  Serial.print("  ");
+  Serial.println(motors_outport[3]);
+
 }

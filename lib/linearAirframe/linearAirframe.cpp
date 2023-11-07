@@ -164,6 +164,11 @@ void linearAirframe_step(void)
     rtM->Timing.t[0] = rtsiGetT(&rtM->solverInfo);
   }
 
+  rtU.Actuators[0] = motors_outport[0];
+  rtU.Actuators[1] = motors_outport[1];
+  rtU.Actuators[2] = motors_outport[2];
+  rtU.Actuators[3] = motors_outport[3];
+
   /* Outputs for Atomic SubSystem: '<Root>/Linear' */
   /* SignalConversion generated from: '<S1>/Linear Model' incorporates:
    *  Bias: '<S1>/Actuator Trim'

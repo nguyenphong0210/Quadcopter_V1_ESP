@@ -229,6 +229,8 @@ extern ExtY rtY;
 /* Constant parameters (default storage) */
 extern const ConstP rtConstP;
 
+extern real32_T motors_outport[4];     /* '<S1>/controller' */
+
 /* Model entry point functions */
 extern void linearAirframe_initialize(void);
 extern void linearAirframe_step(void);
