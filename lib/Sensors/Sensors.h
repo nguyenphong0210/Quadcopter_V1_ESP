@@ -4,7 +4,6 @@
 #include <string.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
-#include <Wire.h>
 #ifndef Sensors_COMMON_INCLUDES_
 # define Sensors_COMMON_INCLUDES_
 #include "rtwtypes.h"

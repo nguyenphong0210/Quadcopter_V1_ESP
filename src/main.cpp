@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Wire.h>
 #include <Signals.h>
 #include <Sensors.h>
 #include <Environment.h>
