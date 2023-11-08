@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'linearAirframe'.
  *
- * Model version                  : 1.44
+ * Model version                  : 1.42
  * Simulink Coder version         : 9.2 (R2019b) 18-Jul-2019
- * C/C++ source code generated on : Mon Nov  6 00:19:43 2023
+ * C/C++ source code generated on : Sun Nov  5 22:35:47 2023
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: Atmel->AVR (32-bit)
@@ -26,8 +26,37 @@
 #include "rtw_solver.h"
 #endif                                 /* linearAirframe_COMMON_INCLUDES_ */
 
+/* Macros for accessing real-time model data structure */
+#ifndef rtmGetErrorStatus
+# define rtmGetErrorStatus(rtm)        ((rtm)->errorStatus)
+#endif
+
+#ifndef rtmSetErrorStatus
+# define rtmSetErrorStatus(rtm, val)   ((rtm)->errorStatus = (val))
+#endif
+
+#ifndef rtmGetStopRequested
+# define rtmGetStopRequested(rtm)      ((rtm)->Timing.stopRequestedFlag)
+#endif
+
+#ifndef rtmSetStopRequested
+# define rtmSetStopRequested(rtm, val) ((rtm)->Timing.stopRequestedFlag = (val))
+#endif
+
+#ifndef rtmGetStopRequestedPtr
+# define rtmGetStopRequestedPtr(rtm)   (&((rtm)->Timing.stopRequestedFlag))
+#endif
+
+#ifndef rtmGetT
+# define rtmGetT(rtm)                  (rtmGetTPtr((rtm))[0])
+#endif
+
+#ifndef rtmGetTPtr
+# define rtmGetTPtr(rtm)               ((rtm)->Timing.t)
+#endif
+
 /* Forward declaration for rtModel */
-typedef struct tag_RTM_linearAirframe_T RT_MODEL_linearAirframe_T;
+typedef struct tag_RTM RT_MODEL;
 
 #ifndef DEFINED_TYPEDEF_FOR_AtmosphereBus_
 #define DEFINED_TYPEDEF_FOR_AtmosphereBus_
@@ -37,7 +66,7 @@ typedef struct {
   real_T speed_sound;
   real_T pressure;
   real_T air_density;
-} AtmosphereBus;
+} _AtmosphereBus;
 
 #endif
 
@@ -46,7 +75,7 @@ typedef struct {
 
 typedef struct {
   real_T Gravity_ned[3];
-  AtmosphereBus AtmosphereBus;
+  _AtmosphereBus AtmosphereBus;
   real_T MagneticField_ned[3];
 } EnvironmentBus;
 
@@ -71,30 +100,103 @@ typedef struct {
 
 #endif
 
-/* Block signals and states (default storage) for model 'linearAirframe' */
+/* Block signals and states (default storage) for system '<Root>' */
 typedef struct {
   real_T TmpSignalConversionAtLinearMode[14];
-} DW_linearAirframe_f_T;
+} DW;
 
-/* Continuous states for model 'linearAirframe' */
+/* Continuous states (default storage) */
 typedef struct {
   real_T LinearModel_CSTATE[12];       /* '<S1>/Linear Model' */
-} X_linearAirframe_n_T;
+} X;
 
-/* State derivatives for model 'linearAirframe' */
+/* State derivatives (default storage) */
 typedef struct {
   real_T LinearModel_CSTATE[12];       /* '<S1>/Linear Model' */
-} XDot_linearAirframe_n_T;
+} XDot;
 
-/* State Disabled for model 'linearAirframe' */
+/* State disabled  */
 typedef struct {
   boolean_T LinearModel_CSTATE[12];    /* '<S1>/Linear Model' */
-} XDis_linearAirframe_n_T;
+} XDis;
+
+#ifndef ODE3_INTG
+#define ODE3_INTG
+
+/* ODE3 Integration Data */
+typedef struct {
+  real_T *y;                           /* output */
+  real_T *f[3];                        /* derivatives */
+} ODE3_IntgData;
+
+#endif
+
+/* Constant parameters (default storage) */
+typedef struct {
+  /* Computed Parameter: LinearModel_A
+   * Referenced by: '<S1>/Linear Model'
+   */
+  real_T LinearModel_A[67];
+
+  /* Computed Parameter: LinearModel_B
+   * Referenced by: '<S1>/Linear Model'
+   */
+  real_T LinearModel_B[37];
+
+  /* Computed Parameter: LinearModel_C
+   * Referenced by: '<S1>/Linear Model'
+   */
+  real_T LinearModel_C[85];
+
+  /* Computed Parameter: LinearModel_D
+   * Referenced by: '<S1>/Linear Model'
+   */
+  real_T LinearModel_D[35];
+
+  /* Expression: opreport.Outputs(9).y
+   * Referenced by: '<S1>/DCM_be Trim'
+   */
+  real_T DCM_beTrim_Bias[9];
+} ConstP;
+
+/* External inputs (root inport signals with default storage) */
+typedef struct {
+  real32_T Actuators[4];               /* '<Root>/Actuators' */
+  EnvironmentBus Environment;          /* '<Root>/Environment' */
+} ExtU;
+
+/* External outputs (root outports fed by signals with default storage) */
+typedef struct {
+  StatesBus States;                    /* '<Root>/States' */
+} ExtY;
 
 /* Real-time Model Data Structure */
-struct tag_RTM_linearAirframe_T {
-  const char_T **errorStatus;
-  RTWSolverInfo *solverInfo;
+struct tag_RTM {
+  const char_T *errorStatus;
+  RTWSolverInfo solverInfo;
+  X *contStates;
+  int_T *periodicContStateIndices;
+  real_T *periodicContStateRanges;
+  real_T *derivs;
+  boolean_T *contStateDisabled;
+  boolean_T zCCacheNeedsReset;
+  boolean_T derivCacheNeedsReset;
+  boolean_T CTOutputIncnstWithState;
+  real_T odeY[12];
+  real_T odeF[3][12];
+  ODE3_IntgData intgData;
+
+  /*
+   * Sizes:
+   * The following substructure contains sizes information
+   * for many of the model attributes such as inputs, outputs,
+   * dwork, sample times, etc.
+   */
+  struct {
+    int_T numContStates;
+    int_T numPeriodicContStates;
+    int_T numSampTimes;
+  } Sizes;
 
   /*
    * Timing:
@@ -102,28 +204,39 @@ struct tag_RTM_linearAirframe_T {
    * the timing information for the model.
    */
   struct {
+    uint32_T clockTick0;
     time_T stepSize0;
-    SimTimeStep *simTimeStep;
-    boolean_T *stopRequestedFlag;
+    uint32_T clockTick1;
+    SimTimeStep simTimeStep;
+    boolean_T stopRequestedFlag;
+    time_T *t;
+    time_T tArray[2];
   } Timing;
 };
 
-typedef struct {
-  DW_linearAirframe_f_T rtdw;
-  RT_MODEL_linearAirframe_T rtm;
-} MdlrefDW_linearAirframe_T;
+/* Continuous states (default storage) */
+extern X rtX;
 
-/* Model reference registration function */
-extern void linearAirframe_initialize(const char_T **rt_errorStatus, boolean_T
-  *rt_stopRequested, RTWSolverInfo *rt_solverInfo, RT_MODEL_linearAirframe_T *
-  const linearAirframe_M);
-extern void linearAirframe_Init(X_linearAirframe_n_T *localX);
-extern void linearAirframe_Deriv(DW_linearAirframe_f_T *localDW,
-  X_linearAirframe_n_T *localX, XDot_linearAirframe_n_T *localXdot);
-extern void linearAirframe_Update(void);
-extern void linearAirframe(const real32_T rtu_Actuators[4], const EnvironmentBus
-  *rtu_Environment, StatesBus *rty_States, DW_linearAirframe_f_T *localDW,
-  X_linearAirframe_n_T *localX);
+/* Block signals and states (default storage) */
+extern DW rtDW;
+
+/* External inputs (root inport signals with default storage) */
+extern ExtU rtU;
+
+/* External outputs (root outports fed by signals with default storage) */
+extern ExtY rtY;
+
+/* Constant parameters (default storage) */
+extern const ConstP rtConstP;
+
+extern real32_T motors_outport[4];     /* '<S1>/controller' */
+
+/* Model entry point functions */
+extern void linearAirframe_initialize(void);
+extern void linearAirframe_step(void);
+
+/* Real-time Model object */
+extern RT_MODEL *const rtM;
 
 /*-
  * These blocks were eliminated from the model due to optimizations:

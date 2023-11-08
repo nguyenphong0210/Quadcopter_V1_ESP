@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'linearAirframe'.
  *
- * Model version                  : 1.44
+ * Model version                  : 1.42
  * Simulink Coder version         : 9.2 (R2019b) 18-Jul-2019
- * C/C++ source code generated on : Mon Nov  6 00:19:43 2023
+ * C/C++ source code generated on : Sun Nov  5 22:35:47 2023
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: Atmel->AVR (32-bit)
@@ -19,197 +19,205 @@
 
 /* Private macros used by the generated code to access rtModel */
 #ifndef rtmIsMajorTimeStep
-# define rtmIsMajorTimeStep(rtm)       ((rtmGetSimTimeStep((rtm))) == MAJOR_TIME_STEP)
+# define rtmIsMajorTimeStep(rtm)       (((rtm)->Timing.simTimeStep) == MAJOR_TIME_STEP)
 #endif
 
 #ifndef rtmIsMinorTimeStep
-# define rtmIsMinorTimeStep(rtm)       ((rtmGetSimTimeStep((rtm))) == MINOR_TIME_STEP)
+# define rtmIsMinorTimeStep(rtm)       (((rtm)->Timing.simTimeStep) == MINOR_TIME_STEP)
 #endif
 
-/* Macros for accessing real-time model data structure */
-#ifndef rtmGetErrorStatus
-# define rtmGetErrorStatus(rtm)        (*((rtm)->errorStatus))
+#ifndef rtmSetTPtr
+# define rtmSetTPtr(rtm, val)          ((rtm)->Timing.t = (val))
 #endif
 
-#ifndef rtmSetErrorStatus
-# define rtmSetErrorStatus(rtm, val)   (*((rtm)->errorStatus) = (val))
-#endif
+/* Continuous states */
+X rtX;
 
-#ifndef rtmGetErrorStatusPointer
-# define rtmGetErrorStatusPointer(rtm) (rtm)->errorStatus
-#endif
+/* Block signals and states (default storage) */
+DW rtDW;
 
-#ifndef rtmSetErrorStatusPointer
-# define rtmSetErrorStatusPointer(rtm, val) ((rtm)->errorStatus = (val))
-#endif
+/* External inputs (root inport signals with default storage) */
+ExtU rtU;
 
-#ifndef rtmGetSimTimeStep
-# define rtmGetSimTimeStep(rtm)        (*((rtm)->Timing.simTimeStep))
-#endif
+/* External outputs (root outports fed by signals with default storage) */
+ExtY rtY;
 
-#ifndef rtmGetSimTimeStepPointer
-# define rtmGetSimTimeStepPointer(rtm) (rtm)->Timing.simTimeStep
-#endif
+/* Real-time model */
+RT_MODEL rtM_;
+RT_MODEL *const rtM = &rtM_;
 
-#ifndef rtmSetSimTimeStepPointer
-# define rtmSetSimTimeStepPointer(rtm, val) ((rtm)->Timing.simTimeStep = (val))
-#endif
+/* private model entry point functions */
+extern void linearAirframe_derivatives(void);
 
-#ifndef rtmGetStopRequested
-# define rtmGetStopRequested(rtm)      (*((rtm)->Timing.stopRequestedFlag))
-#endif
-
-#ifndef rtmSetStopRequested
-# define rtmSetStopRequested(rtm, val) (*((rtm)->Timing.stopRequestedFlag) = (val))
-#endif
-
-#ifndef rtmGetStopRequestedPtr
-# define rtmGetStopRequestedPtr(rtm)   ((rtm)->Timing.stopRequestedFlag)
-#endif
-
-#ifndef rtmSetStopRequestedPtr
-# define rtmSetStopRequestedPtr(rtm, val) ((rtm)->Timing.stopRequestedFlag = (val))
-#endif
-
-extern const real_T rtCP_pooled_sCLbtgmndWSw[67];
-extern const real_T rtCP_pooled_1DG9mhjllGPJ[37];
-extern const real_T rtCP_pooled_MPhBaapyGEbr[85];
-extern const real_T rtCP_pooled_tFQ5582VhrTZ[35];
-extern const real_T rtCP_pooled_8iBNt9Di3rjJ[9];
-
-#define rtCP_LinearModel_A             rtCP_pooled_sCLbtgmndWSw  /* Computed Parameter: rtCP_LinearModel_A
-                                                                  * Referenced by: '<S1>/Linear Model'
-                                                                  */
-#define rtCP_LinearModel_B             rtCP_pooled_1DG9mhjllGPJ  /* Computed Parameter: rtCP_LinearModel_B
-                                                                  * Referenced by: '<S1>/Linear Model'
-                                                                  */
-#define rtCP_LinearModel_C             rtCP_pooled_MPhBaapyGEbr  /* Computed Parameter: rtCP_LinearModel_C
-                                                                  * Referenced by: '<S1>/Linear Model'
-                                                                  */
-#define rtCP_LinearModel_D             rtCP_pooled_tFQ5582VhrTZ  /* Computed Parameter: rtCP_LinearModel_D
-                                                                  * Referenced by: '<S1>/Linear Model'
-                                                                  */
-#define rtCP_DCM_beTrim_Bias           rtCP_pooled_8iBNt9Di3rjJ  /* Expression: opreport.Outputs(9).y
-                                                                  * Referenced by: '<S1>/DCM_be Trim'
-                                                                  */
-
-/* System initialize for referenced model: 'linearAirframe' */
-void linearAirframe_Init(X_linearAirframe_n_T *localX)
+/*
+ * This function updates continuous states using the ODE3 fixed-step
+ * solver algorithm
+ */
+static void rt_ertODEUpdateContinuousStates(RTWSolverInfo *si )
 {
-  /* SystemInitialize for Atomic SubSystem: '<Root>/Linear' */
-  /* InitializeConditions for StateSpace: '<S1>/Linear Model' */
-  memset(&localX->LinearModel_CSTATE[0], 0, 12U * sizeof(real_T));
+  /* Solver Matrices */
+  static const real_T rt_ODE3_A[3] = {
+    1.0/2.0, 3.0/4.0, 1.0
+  };
 
-  /* End of SystemInitialize for SubSystem: '<Root>/Linear' */
+  static const real_T rt_ODE3_B[3][3] = {
+    { 1.0/2.0, 0.0, 0.0 },
+
+    { 0.0, 3.0/4.0, 0.0 },
+
+    { 2.0/9.0, 1.0/3.0, 4.0/9.0 }
+  };
+
+  time_T t = rtsiGetT(si);
+  time_T tnew = rtsiGetSolverStopTime(si);
+  time_T h = rtsiGetStepSize(si);
+  real_T *x = rtsiGetContStates(si);
+  ODE3_IntgData *id = (ODE3_IntgData *)rtsiGetSolverData(si);
+  real_T *y = id->y;
+  real_T *f0 = id->f[0];
+  real_T *f1 = id->f[1];
+  real_T *f2 = id->f[2];
+  real_T hB[3];
+  int_T i;
+  int_T nXc = 12;
+  rtsiSetSimTimeStep(si,MINOR_TIME_STEP);
+
+  /* Save the state values at time t in y, we'll use x as ynew. */
+  (void) memcpy(y, x,
+                (uint_T)nXc*sizeof(real_T));
+
+  /* Assumes that rtsiSetT and ModelOutputs are up-to-date */
+  /* f0 = f(t,y) */
+  rtsiSetdX(si, f0);
+  linearAirframe_derivatives();
+
+  /* f(:,2) = feval(odefile, t + hA(1), y + f*hB(:,1), args(:)(*)); */
+  hB[0] = h * rt_ODE3_B[0][0];
+  for (i = 0; i < nXc; i++) {
+    x[i] = y[i] + (f0[i]*hB[0]);
+  }
+
+  rtsiSetT(si, t + h*rt_ODE3_A[0]);
+  rtsiSetdX(si, f1);
+  linearAirframe_step();
+  linearAirframe_derivatives();
+
+  /* f(:,3) = feval(odefile, t + hA(2), y + f*hB(:,2), args(:)(*)); */
+  for (i = 0; i <= 1; i++) {
+    hB[i] = h * rt_ODE3_B[1][i];
+  }
+
+  for (i = 0; i < nXc; i++) {
+    x[i] = y[i] + (f0[i]*hB[0] + f1[i]*hB[1]);
+  }
+
+  rtsiSetT(si, t + h*rt_ODE3_A[1]);
+  rtsiSetdX(si, f2);
+  linearAirframe_step();
+  linearAirframe_derivatives();
+
+  /* tnew = t + hA(3);
+     ynew = y + f*hB(:,3); */
+  for (i = 0; i <= 2; i++) {
+    hB[i] = h * rt_ODE3_B[2][i];
+  }
+
+  for (i = 0; i < nXc; i++) {
+    x[i] = y[i] + (f0[i]*hB[0] + f1[i]*hB[1] + f2[i]*hB[2]);
+  }
+
+  rtsiSetT(si, tnew);
+  rtsiSetSimTimeStep(si,MAJOR_TIME_STEP);
 }
 
-/* Outputs for referenced model: 'linearAirframe' */
-void linearAirframe(const real32_T rtu_Actuators[4], const EnvironmentBus
-                    *rtu_Environment, StatesBus *rty_States,
-                    DW_linearAirframe_f_T *localDW, X_linearAirframe_n_T *localX)
+/* Model step function */
+void linearAirframe_step(void)
 {
-  /* local block i/o variables */
-  real_T rtb_AirTempTrim;
-  real_T rtb_SpeedofSoundTrim;
-  real_T rtb_PressureTrim;
-  real_T rtb_DensityTrim;
-  real_T rtb_ActuatorTrim[4];
-  real_T rtb_Accel_bTrim[3];
   int_T ci;
-  real_T rtb_DCM_be[9];
   real_T rtb_DCM_beTrim[9];
   real_T rtb_LinearModel[33];
   int32_T i;
-  static const int8_T ir[34] = { 0, 7, 15, 17, 18, 21, 24, 26, 27, 30, 31, 33,
+  static const int8_T ir_0[34] = { 0, 7, 15, 17, 18, 21, 24, 26, 27, 30, 31, 33,
     35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 53, 59, 64, 65, 66, 67,
     73, 79, 85 };
 
-  static const int8_T ir_0[34] = { 0, 8, 16, 22, 22, 22, 22, 22, 22, 22, 22, 22,
+  static const int8_T ir_1[34] = { 0, 8, 16, 22, 22, 22, 22, 22, 22, 22, 22, 22,
     22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
     26, 30, 35 };
 
-  static const int8_T jc[85] = { 1, 3, 4, 5, 9, 10, 11, 0, 1, 3, 4, 5, 9, 10, 11,
-    0, 1, 1, 0, 1, 2, 0, 1, 2, 1, 2, 0, 0, 1, 2, 1, 0, 1, 0, 1, 0, 1, 2, 6, 7, 8,
-    9, 10, 11, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 3, 4, 5, 6, 7,
-    8, 3, 4, 5, 9, 10, 11, 3, 4, 5, 9, 10, 11, 3, 4, 5, 9, 10, 11 };
+  static const int8_T jc_0[85] = { 1, 3, 4, 5, 9, 10, 11, 0, 1, 3, 4, 5, 9, 10,
+    11, 0, 1, 1, 0, 1, 2, 0, 1, 2, 1, 2, 0, 0, 1, 2, 1, 0, 1, 0, 1, 0, 1, 2, 6,
+    7, 8, 9, 10, 11, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0, 1, 3, 4, 5,
+    6, 7, 8, 3, 4, 5, 9, 10, 11, 3, 4, 5, 9, 10, 11, 3, 4, 5, 9, 10, 11 };
 
-  static const int8_T jc_0[35] = { 0, 1, 2, 3, 4, 8, 9, 10, 0, 1, 2, 3, 4, 8, 9,
+  static const int8_T jc_1[35] = { 0, 1, 2, 3, 4, 8, 9, 10, 0, 1, 2, 3, 4, 8, 9,
     10, 0, 1, 2, 3, 4, 10, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 4 };
 
+  if (rtmIsMajorTimeStep(rtM)) {
+    /* set solver stop time */
+    rtsiSetSolverStopTime(&rtM->solverInfo,((rtM->Timing.clockTick0+1)*
+      rtM->Timing.stepSize0));
+  }                                    /* end MajorTimeStep */
+
+  /* Update absolute time of base rate at minor time step */
+  if (rtmIsMinorTimeStep(rtM)) {
+    rtM->Timing.t[0] = rtsiGetT(&rtM->solverInfo);
+  }
+
+  rtU.Actuators[0] = motors_outport[0];
+  rtU.Actuators[1] = motors_outport[1];
+  rtU.Actuators[2] = motors_outport[2];
+  rtU.Actuators[3] = motors_outport[3];
+
   /* Outputs for Atomic SubSystem: '<Root>/Linear' */
-  /* DataTypeConversion: '<S1>/Data Type Conversion' */
-  rtb_ActuatorTrim[0] = rtu_Actuators[0];
-
-  /* Bias: '<S1>/Actuator Trim' */
-  rtb_ActuatorTrim[0] += -255.27934378890362;
-
-  /* DataTypeConversion: '<S1>/Data Type Conversion' */
-  rtb_ActuatorTrim[1] = rtu_Actuators[1];
-
-  /* Bias: '<S1>/Actuator Trim' */
-  rtb_ActuatorTrim[1] += 255.27934378890583;
-
-  /* DataTypeConversion: '<S1>/Data Type Conversion' */
-  rtb_ActuatorTrim[2] = rtu_Actuators[2];
-
-  /* Bias: '<S1>/Actuator Trim' */
-  rtb_ActuatorTrim[2] += -255.27934378890805;
-
-  /* DataTypeConversion: '<S1>/Data Type Conversion' */
-  rtb_ActuatorTrim[3] = rtu_Actuators[3];
-
-  /* Bias: '<S1>/Actuator Trim' */
-  rtb_ActuatorTrim[3] += 255.27934378890583;
-
-  /* Bias: '<S1>/Air Temp Trim' */
-  rtb_AirTempTrim = rtu_Environment->AtmosphereBus.air_temp + -288.0;
-
-  /* Bias: '<S1>/Speed of Sound Trim' */
-  rtb_SpeedofSoundTrim = rtu_Environment->AtmosphereBus.speed_sound + -340.0;
-
-  /* Bias: '<S1>/Pressure Trim' */
-  rtb_PressureTrim = rtu_Environment->AtmosphereBus.pressure + -101300.0;
-
-  /* Bias: '<S1>/Density Trim' */
-  rtb_DensityTrim = rtu_Environment->AtmosphereBus.air_density + -1.184;
-
-  /* Bias: '<S1>/Gravity NED Trim' */
-  rtb_Accel_bTrim[0] = rtu_Environment->Gravity_ned[0];
-  rtb_Accel_bTrim[1] = rtu_Environment->Gravity_ned[1];
-  rtb_Accel_bTrim[2] = rtu_Environment->Gravity_ned[2] + -9.81;
-
-  /* SignalConversion generated from: '<S1>/Linear Model' */
-  localDW->TmpSignalConversionAtLinearMode[0] = rtb_ActuatorTrim[0];
-  localDW->TmpSignalConversionAtLinearMode[1] = rtb_ActuatorTrim[1];
-  localDW->TmpSignalConversionAtLinearMode[2] = rtb_ActuatorTrim[2];
-  localDW->TmpSignalConversionAtLinearMode[3] = rtb_ActuatorTrim[3];
-  localDW->TmpSignalConversionAtLinearMode[4] = rtb_AirTempTrim;
-  localDW->TmpSignalConversionAtLinearMode[5] = rtb_SpeedofSoundTrim;
-  localDW->TmpSignalConversionAtLinearMode[6] = rtb_PressureTrim;
-  localDW->TmpSignalConversionAtLinearMode[7] = rtb_DensityTrim;
-  localDW->TmpSignalConversionAtLinearMode[8] = rtb_Accel_bTrim[0];
-  localDW->TmpSignalConversionAtLinearMode[11] =
-    rtu_Environment->MagneticField_ned[0];
-  localDW->TmpSignalConversionAtLinearMode[9] = rtb_Accel_bTrim[1];
-  localDW->TmpSignalConversionAtLinearMode[12] =
-    rtu_Environment->MagneticField_ned[1];
-  localDW->TmpSignalConversionAtLinearMode[10] = rtb_Accel_bTrim[2];
-  localDW->TmpSignalConversionAtLinearMode[13] =
-    rtu_Environment->MagneticField_ned[2];
+  /* SignalConversion generated from: '<S1>/Linear Model' incorporates:
+   *  Bias: '<S1>/Actuator Trim'
+   *  Bias: '<S1>/Air Temp Trim'
+   *  Bias: '<S1>/Density Trim'
+   *  Bias: '<S1>/Gravity NED Trim'
+   *  Bias: '<S1>/Pressure Trim'
+   *  Bias: '<S1>/Speed of Sound Trim'
+   *  DataTypeConversion: '<S1>/Data Type Conversion'
+   *  Inport: '<Root>/Actuators'
+   *  Inport: '<Root>/Environment'
+   */
+  rtDW.TmpSignalConversionAtLinearMode[0] = rtU.Actuators[0] +
+    -255.27934378890362;
+  rtDW.TmpSignalConversionAtLinearMode[1] = rtU.Actuators[1] +
+    255.27934378890583;
+  rtDW.TmpSignalConversionAtLinearMode[2] = rtU.Actuators[2] +
+    -255.27934378890805;
+  rtDW.TmpSignalConversionAtLinearMode[3] = rtU.Actuators[3] +
+    255.27934378890583;
+  rtDW.TmpSignalConversionAtLinearMode[4] =
+    rtU.Environment.AtmosphereBus.air_temp + -288.0;
+  rtDW.TmpSignalConversionAtLinearMode[5] =
+    rtU.Environment.AtmosphereBus.speed_sound + -340.0;
+  rtDW.TmpSignalConversionAtLinearMode[6] =
+    rtU.Environment.AtmosphereBus.pressure + -101300.0;
+  rtDW.TmpSignalConversionAtLinearMode[7] =
+    rtU.Environment.AtmosphereBus.air_density + -1.184;
+  rtDW.TmpSignalConversionAtLinearMode[8] = rtU.Environment.Gravity_ned[0];
+  rtDW.TmpSignalConversionAtLinearMode[11] = rtU.Environment.MagneticField_ned[0];
+  rtDW.TmpSignalConversionAtLinearMode[9] = rtU.Environment.Gravity_ned[1];
+  rtDW.TmpSignalConversionAtLinearMode[12] = rtU.Environment.MagneticField_ned[1];
+  rtDW.TmpSignalConversionAtLinearMode[10] = rtU.Environment.Gravity_ned[2] +
+    -9.81;
+  rtDW.TmpSignalConversionAtLinearMode[13] = rtU.Environment.MagneticField_ned[2];
 
   /* StateSpace: '<S1>/Linear Model' */
   for (i = 0; i < 33; i++) {
     rtb_LinearModel[i] = 0.0;
-    for (ci = ir[i]; ci < ir[i + 1]; ci++) {
-      rtb_LinearModel[i] += rtCP_LinearModel_C[ci] * localX->
-        LinearModel_CSTATE[jc[ci]];
+    for (ci = ir_0[i]; ci < ir_0[i + 1]; ci++) {
+      rtb_LinearModel[i] += rtConstP.LinearModel_C[ci] *
+        rtX.LinearModel_CSTATE[jc_0[ci]];
     }
   }
 
   for (i = 0; i < 33; i++) {
-    for (ci = ir_0[i]; ci < ir_0[i + 1]; ci++) {
-      rtb_LinearModel[i] += rtCP_LinearModel_D[ci] *
-        localDW->TmpSignalConversionAtLinearMode[jc_0[ci]];
+    for (ci = ir_1[i]; ci < ir_1[i + 1]; ci++) {
+      rtb_LinearModel[i] += rtConstP.LinearModel_D[ci] *
+        rtDW.TmpSignalConversionAtLinearMode[jc_1[ci]];
     }
   }
 
@@ -217,162 +225,174 @@ void linearAirframe(const real32_T rtu_Actuators[4], const EnvironmentBus
 
   /* Bias: '<S1>/DCM_be Trim' */
   for (i = 0; i < 9; i++) {
-    rtb_DCM_beTrim[i] = rtb_LinearModel[i + 3] + rtCP_DCM_beTrim_Bias[i];
+    rtb_DCM_beTrim[i] = rtb_LinearModel[i + 3] + rtConstP.DCM_beTrim_Bias[i];
   }
 
   /* End of Bias: '<S1>/DCM_be Trim' */
 
-  /* SignalConversion generated from: '<S2>/Vector Concatenate' */
-  rtb_DCM_be[0] = rtb_DCM_beTrim[0];
+  /* SignalConversion generated from: '<S2>/Vector Concatenate' incorporates:
+   *  Outport: '<Root>/States'
+   */
+  rtY.States.DCM_be[0] = rtb_DCM_beTrim[0];
 
-  /* SignalConversion generated from: '<S2>/Vector Concatenate' */
-  rtb_DCM_be[3] = rtb_DCM_beTrim[3];
+  /* SignalConversion generated from: '<S2>/Vector Concatenate' incorporates:
+   *  Outport: '<Root>/States'
+   */
+  rtY.States.DCM_be[3] = rtb_DCM_beTrim[3];
 
-  /* SignalConversion generated from: '<S2>/Vector Concatenate' */
-  rtb_DCM_be[6] = rtb_DCM_beTrim[6];
+  /* SignalConversion generated from: '<S2>/Vector Concatenate' incorporates:
+   *  Outport: '<Root>/States'
+   */
+  rtY.States.DCM_be[6] = rtb_DCM_beTrim[6];
 
-  /* Bias: '<S1>/Accel_b Trim' */
-  rtb_Accel_bTrim[0] = rtb_LinearModel[0] + 5.1184781305897922E-11;
+  /* Outport: '<Root>/States' incorporates:
+   *  Bias: '<S1>/Accel_b Trim'
+   *  Bias: '<S1>/Euler Trim'
+   *  Bias: '<S1>/LLA Trim'
+   *  Bias: '<S1>/Omega Trim'
+   *  Bias: '<S1>/V_ned Trim'
+   *  Bias: '<S1>/Vb Trim'
+   *  Bias: '<S1>/X_ned Trim'
+   *  Bias: '<S1>/dOmega_b Trim'
+   */
+  rtY.States.V_body[0] = rtb_LinearModel[21] + 3.5087306067171784E-13;
+  rtY.States.Omega_body[0] = rtb_LinearModel[18] + -6.8346634702081575E-13;
+  rtY.States.Euler[0] = rtb_LinearModel[12] + -5.2294605937771943E-12;
+  rtY.States.Accel_body[0] = rtb_LinearModel[0] + 5.1184781305897922E-11;
+  rtY.States.dOmega_body[0] = rtb_LinearModel[30] + 1.6268279495833624E-29;
+  rtY.States.V_ned[0] = rtb_LinearModel[24] + 3.5087306067171784E-13;
+  rtY.States.X_ned[0] = rtb_LinearModel[27] + 57.0;
+  rtY.States.LLA[0] = rtb_LinearModel[15] + 42.300399147790976;
 
-  /* Bias: '<S1>/Vb Trim' */
-  rty_States->V_body[0] = rtb_LinearModel[21] + 3.5087306067171784E-13;
+  /* SignalConversion generated from: '<S2>/Vector Concatenate' incorporates:
+   *  Outport: '<Root>/States'
+   */
+  rtY.States.DCM_be[1] = rtb_DCM_beTrim[1];
 
-  /* Bias: '<S1>/Omega Trim' */
-  rty_States->Omega_body[0] = rtb_LinearModel[18] + -6.8346634702081575E-13;
+  /* SignalConversion generated from: '<S2>/Vector Concatenate' incorporates:
+   *  Outport: '<Root>/States'
+   */
+  rtY.States.DCM_be[4] = rtb_DCM_beTrim[4];
 
-  /* Bias: '<S1>/Euler Trim' */
-  rty_States->Euler[0] = rtb_LinearModel[12] + -5.2294605937771943E-12;
+  /* SignalConversion generated from: '<S2>/Vector Concatenate' incorporates:
+   *  Outport: '<Root>/States'
+   */
+  rtY.States.DCM_be[7] = rtb_DCM_beTrim[7];
 
-  /* Bias: '<S1>/dOmega_b Trim' */
-  rty_States->dOmega_body[0] = rtb_LinearModel[30] + 1.6268279495833624E-29;
+  /* Outport: '<Root>/States' incorporates:
+   *  Bias: '<S1>/Accel_b Trim'
+   *  Bias: '<S1>/Euler Trim'
+   *  Bias: '<S1>/LLA Trim'
+   *  Bias: '<S1>/Omega Trim'
+   *  Bias: '<S1>/V_ned Trim'
+   *  Bias: '<S1>/Vb Trim'
+   *  Bias: '<S1>/X_ned Trim'
+   *  Bias: '<S1>/dOmega_b Trim'
+   */
+  rtY.States.V_body[1] = rtb_LinearModel[22] + -3.2919802336754485E-13;
+  rtY.States.Omega_body[1] = rtb_LinearModel[19] + -6.8347177408767424E-13;
+  rtY.States.Euler[1] = rtb_LinearModel[13] + -5.2296012979151076E-12;
+  rtY.States.Accel_body[1] = rtb_LinearModel[1] + -5.1184797737517628E-11;
+  rtY.States.dOmega_body[1] = rtb_LinearModel[31] + 4.7139224890674086E-14;
+  rtY.States.V_ned[1] = rtb_LinearModel[25] + -3.2919802336754485E-13;
+  rtY.States.X_ned[1] = rtb_LinearModel[28] + 95.0;
+  rtY.States.LLA[1] = rtb_LinearModel[16] + -71.349294934908414;
 
-  /* Bias: '<S1>/V_ned Trim' */
-  rty_States->V_ned[0] = rtb_LinearModel[24] + 3.5087306067171784E-13;
+  /* SignalConversion generated from: '<S2>/Vector Concatenate' incorporates:
+   *  Outport: '<Root>/States'
+   */
+  rtY.States.DCM_be[2] = rtb_DCM_beTrim[2];
 
-  /* Bias: '<S1>/X_ned Trim' */
-  rty_States->X_ned[0] = rtb_LinearModel[27] + 57.0;
+  /* SignalConversion generated from: '<S2>/Vector Concatenate' incorporates:
+   *  Outport: '<Root>/States'
+   */
+  rtY.States.DCM_be[5] = rtb_DCM_beTrim[5];
 
-  /* Bias: '<S1>/LLA Trim' */
-  rty_States->LLA[0] = rtb_LinearModel[15] + 42.300399147790976;
+  /* SignalConversion generated from: '<S2>/Vector Concatenate' incorporates:
+   *  Outport: '<Root>/States'
+   */
+  rtY.States.DCM_be[8] = rtb_DCM_beTrim[8];
 
-  /* BusCreator: '<S2>/Bus Creator5' */
-  rty_States->Accel_body[0] = rtb_Accel_bTrim[0];
-
-  /* SignalConversion generated from: '<S2>/Vector Concatenate' */
-  rtb_DCM_be[1] = rtb_DCM_beTrim[1];
-
-  /* SignalConversion generated from: '<S2>/Vector Concatenate' */
-  rtb_DCM_be[4] = rtb_DCM_beTrim[4];
-
-  /* SignalConversion generated from: '<S2>/Vector Concatenate' */
-  rtb_DCM_be[7] = rtb_DCM_beTrim[7];
-
-  /* Bias: '<S1>/Accel_b Trim' */
-  rtb_Accel_bTrim[1] = rtb_LinearModel[1] + -5.1184797737517628E-11;
-
-  /* Bias: '<S1>/Vb Trim' */
-  rty_States->V_body[1] = rtb_LinearModel[22] + -3.2919802336754485E-13;
-
-  /* Bias: '<S1>/Omega Trim' */
-  rty_States->Omega_body[1] = rtb_LinearModel[19] + -6.8347177408767424E-13;
-
-  /* Bias: '<S1>/Euler Trim' */
-  rty_States->Euler[1] = rtb_LinearModel[13] + -5.2296012979151076E-12;
-
-  /* Bias: '<S1>/dOmega_b Trim' */
-  rty_States->dOmega_body[1] = rtb_LinearModel[31] + 4.7139224890674086E-14;
-
-  /* Bias: '<S1>/V_ned Trim' */
-  rty_States->V_ned[1] = rtb_LinearModel[25] + -3.2919802336754485E-13;
-
-  /* Bias: '<S1>/X_ned Trim' */
-  rty_States->X_ned[1] = rtb_LinearModel[28] + 95.0;
-
-  /* Bias: '<S1>/LLA Trim' */
-  rty_States->LLA[1] = rtb_LinearModel[16] + -71.349294934908414;
-
-  /* BusCreator: '<S2>/Bus Creator5' */
-  rty_States->Accel_body[1] = rtb_Accel_bTrim[1];
-
-  /* SignalConversion generated from: '<S2>/Vector Concatenate' */
-  rtb_DCM_be[2] = rtb_DCM_beTrim[2];
-
-  /* SignalConversion generated from: '<S2>/Vector Concatenate' */
-  rtb_DCM_be[5] = rtb_DCM_beTrim[5];
-
-  /* SignalConversion generated from: '<S2>/Vector Concatenate' */
-  rtb_DCM_be[8] = rtb_DCM_beTrim[8];
-
-  /* Bias: '<S1>/Accel_b Trim' */
-  rtb_Accel_bTrim[2] = rtb_LinearModel[2] + -1.0237061851809164E-6;
-
-  /* Bias: '<S1>/Vb Trim' */
-  rty_States->V_body[2] = rtb_LinearModel[23] + 1.3477834347136587E-19;
-
-  /* Bias: '<S1>/Omega Trim' */
-  rty_States->Omega_body[2] = rtb_LinearModel[20] + 3.6610890988247328E-17;
-
-  /* Bias: '<S1>/Euler Trim' */
-  rty_States->Euler[2] = rtb_LinearModel[14] + 1.496916591715698E-18;
-
-  /* Bias: '<S1>/dOmega_b Trim' */
-  rty_States->dOmega_body[2] = rtb_LinearModel[32] + -7.9370583645301078E-16;
-
-  /* Bias: '<S1>/V_ned Trim' */
-  rty_States->V_ned[2] = rtb_LinearModel[26] + 1.3478189992567012E-19;
-
-  /* Bias: '<S1>/X_ned Trim' */
-  rty_States->X_ned[2] = rtb_LinearModel[29] + -0.046;
-
-  /* Bias: '<S1>/LLA Trim' */
-  rty_States->LLA[2] = rtb_LinearModel[17] + 71.3692;
-
-  /* BusCreator: '<S2>/Bus Creator5' */
-  rty_States->Accel_body[2] = rtb_Accel_bTrim[2];
-  memcpy(&rty_States->DCM_be[0], &rtb_DCM_be[0], 9U * sizeof(real_T));
+  /* Outport: '<Root>/States' incorporates:
+   *  Bias: '<S1>/Accel_b Trim'
+   *  Bias: '<S1>/Euler Trim'
+   *  Bias: '<S1>/LLA Trim'
+   *  Bias: '<S1>/Omega Trim'
+   *  Bias: '<S1>/V_ned Trim'
+   *  Bias: '<S1>/Vb Trim'
+   *  Bias: '<S1>/X_ned Trim'
+   *  Bias: '<S1>/dOmega_b Trim'
+   */
+  rtY.States.V_body[2] = rtb_LinearModel[23] + 1.3477834347136587E-19;
+  rtY.States.Omega_body[2] = rtb_LinearModel[20] + 3.6610890988247328E-17;
+  rtY.States.Euler[2] = rtb_LinearModel[14] + 1.496916591715698E-18;
+  rtY.States.Accel_body[2] = rtb_LinearModel[2] + -1.0237061851809164E-6;
+  rtY.States.dOmega_body[2] = rtb_LinearModel[32] + -7.9370583645301078E-16;
+  rtY.States.V_ned[2] = rtb_LinearModel[26] + 1.3478189992567012E-19;
+  rtY.States.X_ned[2] = rtb_LinearModel[29] + -0.046;
+  rtY.States.LLA[2] = rtb_LinearModel[17] + 71.3692;
 
   /* End of Outputs for SubSystem: '<Root>/Linear' */
+  if (rtmIsMajorTimeStep(rtM)) {
+    rt_ertODEUpdateContinuousStates(&rtM->solverInfo);
+
+    /* Update absolute time for base rate */
+    /* The "clockTick0" counts the number of times the code of this task has
+     * been executed. The absolute time is the multiplication of "clockTick0"
+     * and "Timing.stepSize0". Size of "clockTick0" ensures timer will not
+     * overflow during the application lifespan selected.
+     */
+    ++rtM->Timing.clockTick0;
+    rtM->Timing.t[0] = rtsiGetSolverStopTime(&rtM->solverInfo);
+
+    {
+      /* Update absolute timer for sample time: [0.005s, 0.0s] */
+      /* The "clockTick1" counts the number of times the code of this task has
+       * been executed. The resolution of this integer timer is 0.005, which is the step size
+       * of the task. Size of "clockTick1" ensures timer will not overflow during the
+       * application lifespan selected.
+       */
+      rtM->Timing.clockTick1++;
+    }
+  }                                    /* end MajorTimeStep */
 }
 
-/* Update for referenced model: 'linearAirframe' */
-void linearAirframe_Update(void)
-{
-}
-
-/* Derivatives for referenced model: 'linearAirframe' */
-void linearAirframe_Deriv(DW_linearAirframe_f_T *localDW, X_linearAirframe_n_T
-  *localX, XDot_linearAirframe_n_T *localXdot)
+/* Derivatives for root system: '<Root>' */
+void linearAirframe_derivatives(void)
 {
   int_T is;
   int_T ci;
-  static const int8_T ir[13] = { 0, 4, 7, 11, 18, 26, 32, 38, 44, 49, 55, 61, 67
+  static const int8_T ir_2[13] = { 0, 4, 7, 11, 18, 26, 32, 38, 44, 49, 55, 61,
+    67 };
+
+  static const int8_T ir_3[13] = { 0, 0, 0, 0, 8, 16, 22, 22, 22, 22, 27, 32, 37
   };
 
-  static const int8_T ir_0[13] = { 0, 0, 0, 0, 8, 16, 22, 22, 22, 22, 27, 32, 37
-  };
+  static const int8_T jc_2[67] = { 1, 9, 10, 11, 0, 10, 11, 0, 1, 10, 11, 1, 3,
+    4, 5, 9, 10, 11, 0, 1, 3, 4, 5, 9, 10, 11, 0, 1, 3, 4, 9, 10, 0, 1, 2, 3, 4,
+    5, 0, 1, 2, 3, 4, 5, 0, 1, 3, 4, 5, 3, 4, 5, 9, 10, 11, 3, 4, 5, 9, 10, 11,
+    3, 4, 5, 9, 10, 11 };
 
-  static const int8_T jc[67] = { 1, 9, 10, 11, 0, 10, 11, 0, 1, 10, 11, 1, 3, 4,
-    5, 9, 10, 11, 0, 1, 3, 4, 5, 9, 10, 11, 0, 1, 3, 4, 9, 10, 0, 1, 2, 3, 4, 5,
-    0, 1, 2, 3, 4, 5, 0, 1, 3, 4, 5, 3, 4, 5, 9, 10, 11, 3, 4, 5, 9, 10, 11, 3,
-    4, 5, 9, 10, 11 };
-
-  static const int8_T jc_0[37] = { 0, 1, 2, 3, 4, 8, 9, 10, 0, 1, 2, 3, 4, 8, 9,
+  static const int8_T jc_3[37] = { 0, 1, 2, 3, 4, 8, 9, 10, 0, 1, 2, 3, 4, 8, 9,
     10, 0, 1, 2, 3, 4, 10, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4 };
+
+  XDot *_rtXdot;
+  _rtXdot = ((XDot *) rtM->derivs);
 
   /* Derivatives for Atomic SubSystem: '<Root>/Linear' */
   /* Derivatives for StateSpace: '<S1>/Linear Model' */
   for (is = 0; is < 12; is++) {
-    localXdot->LinearModel_CSTATE[is] = 0.0;
-    for (ci = ir[is]; ci < ir[is + 1]; ci++) {
-      localXdot->LinearModel_CSTATE[is] += rtCP_LinearModel_A[ci] *
-        localX->LinearModel_CSTATE[jc[ci]];
+    _rtXdot->LinearModel_CSTATE[is] = 0.0;
+    for (ci = ir_2[is]; ci < ir_2[is + 1]; ci++) {
+      _rtXdot->LinearModel_CSTATE[is] += rtConstP.LinearModel_A[ci] *
+        rtX.LinearModel_CSTATE[jc_2[ci]];
     }
   }
 
   for (is = 0; is < 12; is++) {
-    for (ci = ir_0[is]; ci < ir_0[is + 1]; ci++) {
-      localXdot->LinearModel_CSTATE[is] += rtCP_LinearModel_B[ci] *
-        localDW->TmpSignalConversionAtLinearMode[jc_0[ci]];
+    for (ci = ir_3[is]; ci < ir_3[is + 1]; ci++) {
+      _rtXdot->LinearModel_CSTATE[is] += rtConstP.LinearModel_B[ci] *
+        rtDW.TmpSignalConversionAtLinearMode[jc_3[ci]];
     }
   }
 
@@ -381,26 +401,43 @@ void linearAirframe_Deriv(DW_linearAirframe_f_T *localDW, X_linearAirframe_n_T
 }
 
 /* Model initialize function */
-void linearAirframe_initialize(const char_T **rt_errorStatus, boolean_T
-  *rt_stopRequested, RTWSolverInfo *rt_solverInfo, RT_MODEL_linearAirframe_T *
-  const linearAirframe_M)
+void linearAirframe_initialize(void)
 {
   /* Registration code */
+  {
+    /* Setup solver object */
+    rtsiSetSimTimeStepPtr(&rtM->solverInfo, &rtM->Timing.simTimeStep);
+    rtsiSetTPtr(&rtM->solverInfo, &rtmGetTPtr(rtM));
+    rtsiSetStepSizePtr(&rtM->solverInfo, &rtM->Timing.stepSize0);
+    rtsiSetdXPtr(&rtM->solverInfo, &rtM->derivs);
+    rtsiSetContStatesPtr(&rtM->solverInfo, (real_T **) &rtM->contStates);
+    rtsiSetNumContStatesPtr(&rtM->solverInfo, &rtM->Sizes.numContStates);
+    rtsiSetNumPeriodicContStatesPtr(&rtM->solverInfo,
+      &rtM->Sizes.numPeriodicContStates);
+    rtsiSetPeriodicContStateIndicesPtr(&rtM->solverInfo,
+      &rtM->periodicContStateIndices);
+    rtsiSetPeriodicContStateRangesPtr(&rtM->solverInfo,
+      &rtM->periodicContStateRanges);
+    rtsiSetErrorStatusPtr(&rtM->solverInfo, (&rtmGetErrorStatus(rtM)));
+    rtsiSetRTModelPtr(&rtM->solverInfo, rtM);
+  }
 
-  /* initialize error status */
-  rtmSetErrorStatusPointer(linearAirframe_M, rt_errorStatus);
+  rtsiSetSimTimeStep(&rtM->solverInfo, MAJOR_TIME_STEP);
+  rtM->intgData.y = rtM->odeY;
+  rtM->intgData.f[0] = rtM->odeF[0];
+  rtM->intgData.f[1] = rtM->odeF[1];
+  rtM->intgData.f[2] = rtM->odeF[2];
+  rtM->contStates = ((X *) &rtX);
+  rtsiSetSolverData(&rtM->solverInfo, (void *)&rtM->intgData);
+  rtsiSetSolverName(&rtM->solverInfo,"ode3");
+  rtmSetTPtr(rtM, &rtM->Timing.tArray[0]);
+  rtM->Timing.stepSize0 = 0.005;
 
-  /* initialize stop requested flag */
-  rtmSetStopRequestedPtr(linearAirframe_M, rt_stopRequested);
+  /* SystemInitialize for Atomic SubSystem: '<Root>/Linear' */
+  /* InitializeConditions for StateSpace: '<S1>/Linear Model' */
+  memset(&rtX.LinearModel_CSTATE[0], 0, 12U * sizeof(real_T));
 
-  /* initialize RTWSolverInfo */
-  linearAirframe_M->solverInfo = (rt_solverInfo);
-
-  /* Set the Timing fields to the appropriate data in the RTWSolverInfo */
-  rtmSetSimTimeStepPointer(linearAirframe_M, rtsiGetSimTimeStepPtr
-    (linearAirframe_M->solverInfo));
-  linearAirframe_M->Timing.stepSize0 = (rtsiGetStepSize
-    (linearAirframe_M->solverInfo));
+  /* End of SystemInitialize for SubSystem: '<Root>/Linear' */
 }
 
 /*
