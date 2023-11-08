@@ -22,11 +22,11 @@ void loop() {
   Environment_step();
   flightControlSystem_step();
   linearAirframe_step();
-  // Serial.print(motors_outport[0]);
-  // Serial.print("  ");
-  // Serial.print(motors_outport[1]);
-  // Serial.print("  ");
-  // Serial.print(motors_outport[2]);
-  // Serial.print("  ");
-  // Serial.println(motors_outport[3]);
+  Serial.print(motors_outport[0]);
+  Serial.print("  ");
+  Serial.print(motors_outport[1]);
+  Serial.print("  ");
+  Serial.print(motors_outport[2]);
+  Serial.print("  ");
+  Serial.println(motors_outport[3]);
 }
